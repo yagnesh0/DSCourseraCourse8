@@ -1,0 +1,87 @@
+---
+title: "Course 8 Project"
+author: "yagnesh0"
+date: "7/5/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Predicting Quality of Exercise 
+This project attempts to classify how well someone did an exercise based on features of movement.
+I used a Gradient Boosted Tree model and did 10 folds for my cross-validation. Overall, I have acheived an 
+accuracy of 96% when testing on an 20% split of the original dataset. 
+
+### Setting up the environment
+```{r workspace}
+setwd("~/datasciencecoursera/Course 8")
+set.seed(100)
+
+library(data.table)
+library(caret)
+```
+
+### Loading in the data
+```{r loading}
+training <- data.frame(fread("pml-training.csv"))
+testing <- data.frame(fread("pml-testing.csv"))
+```
+
+### Choosing features
+My main focus for choosing features was decided by looking at which columns actually posessed
+recorded data for most (if not all) of the entries. I also got rid of any columns that had 
+0 sums. 
+```{r trimming}
+dim(training)
+newTraining <- training[ , colSums(is.na(training)) == 0]
+trimThis <- c("V1", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2",
+              "cvtd_timestamp", "new_window", "num_window", "kurtosis_roll_belt",
+              "kurtosis_picth_belt", "kurtosis_yaw_belt", "skewness_roll_belt",
+              "skewness_roll_belt.1", "skewness_yaw_belt", "max_yaw_belt",
+              "min_yaw_belt", "amplitude_yaw_belt", "kurtosis_roll_arm", 
+              "kurtosis_picth_arm", "kurtosis_yaw_arm", "skewness_roll_arm",
+              "skewness_pitch_arm", "skewness_yaw_arm", "kurtosis_roll_dumbbell",
+              "kurtosis_picth_dumbbell", "kurtosis_yaw_dumbbell",
+              "skewness_roll_dumbbell", "skewness_pitch_dumbbell", "skewness_yaw_dumbbell",
+              "max_yaw_dumbbell","min_yaw_dumbbell","amplitude_yaw_dumbbell",
+              "kurtosis_roll_forearm",  "kurtosis_picth_forearm", "kurtosis_yaw_forearm", 
+              "skewness_roll_forearm", "skewness_pitch_forearm", "skewness_yaw_forearm",
+              "max_yaw_forearm", "min_yaw_forearm", "amplitude_yaw_forearm"
+              )
+newTraining <- newTraining[, !colnames(newTraining) %in% trimThis]
+dim(newTraining)
+```
+
+### Splitting Data
+Split the data into a 80-20 split. The 80% will be used to train the model, while the
+20% will be used to test and gather an out of sample error. 
+
+```{r split}
+inTrain <- createDataPartition(newTraining$classe, p = 0.8, list = F)
+newTrainingA <- newTraining[inTrain, ]
+newTrainingB <- newTraining[-inTrain, ]
+```
+
+### Training
+Used a gradient boosted tree model to classify the datasets. Used 10 folds for cross validation.
+```{r train}
+model1 <- train(classe ~ . , method = "gbm", data = newTrainingA, trControl = trainControl(method = "cv"), verbose = F)
+model1
+```
+
+### Testing
+Tested with the 20% split and achieved 96% as my accuracy.
+```{r test}
+pred <- predict(model1, newdata = newTrainingB)
+confusionMatrix(pred,newTrainingB$classe)
+```
+
+### Testing on 20 sample, with classes outputted.
+```{r test20}
+newTesting <- testing[, colnames(testing) %in% colnames(newTraining)]
+pred2 <- predict(model1, newdata = newTesting)
+pred2
+```
+
